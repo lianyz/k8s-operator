@@ -1,0 +1,12 @@
+apiVersion: apps.cncamp.io/v1beta1
+kind: MyDaemonset
+metadata:
+  labels:
+    app.kubernetes.io/name: mydaemonset
+    app.kubernetes.io/instance: mydaemonset-sample
+    app.kubernetes.io/part-of: k8s-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: k8s-operator
+  name: mydaemonset-sample
+spec:
+  # TODO(user): Add fields here

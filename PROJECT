@@ -3,4 +3,14 @@ layout:
 - go.kubebuilder.io/v3
 projectName: k8s-operator
 repo: github.com/lianyz/k8s-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: cncamp.io
+  group: apps
+  kind: MyDaemonset
+  path: github.com/lianyz/k8s-operator/api/v1beta1
+  version: v1beta1
 version: "3"
