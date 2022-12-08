@@ -29,11 +29,14 @@ type MyDaemonsetSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of MyDaemonset. Edit mydaemonset_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Foo      string `json:"foo,omitempty"`
+	Image    string `json:"image,omitempty"`
+	Replicas int    `json:"replicas,omitempty"`
 }
 
 // MyDaemonsetStatus defines the observed state of MyDaemonset
 type MyDaemonsetStatus struct {
+	AvailableReplicas int `json:"availableReplicas,omitempty"`
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
