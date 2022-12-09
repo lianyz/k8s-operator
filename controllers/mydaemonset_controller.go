@@ -18,6 +18,11 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -51,6 +56,51 @@ func (r *MyDaemonsetReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// TODO(user): your logic here
 
+	myLogger := log.FromContext(ctx)
+	myLogger.Info("Reconcile MyDaemonset", "NamespacedName", req.NamespacedName)
+
+	myDaemonSet := appsv1beta1.MyDaemonset{}
+	if err := r.Client.Get(ctx, req.NamespacedName, &myDaemonSet); err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to get %s", req.NamespacedName)
+	}
+	replicas := myDaemonSet.Spec.Replicas
+	if replicas == 0 {
+		replicas = 2
+	}
+	image := myDaemonSet.Spec.Image
+	if image == "" {
+		image = "nginx"
+	}
+
+	for i := 0; i < replicas; i++ {
+		name := fmt.Sprintf("%s-%d", myDaemonSet.Name, i)
+		err := r.Client.Get(ctx, types.NamespacedName{Namespace: myDaemonSet.Namespace, Name: name}, &v1.Pod{})
+		if err == nil {
+			myLogger.Info("Pod exists", "name", name)
+			continue
+		}
+
+		if !errors.IsNotFound(err) {
+			myLogger.Info("Failed to get pod", "err", err)
+			return ctrl.Result{}, fmt.Errorf("failed to get pod")
+		}
+
+		pod := newPod(name, image, &myDaemonSet)
+
+		if err := r.Client.Create(ctx, &pod); err != nil {
+			myLogger.Info("Failed to create pod", "err", err)
+			return ctrl.Result{}, fmt.Errorf("failed to create pod")
+		}
+
+		toBeUpdate := myDaemonSet.DeepCopy()
+		toBeUpdate.Status.AvailableReplicas += 1
+		if err := r.Client.Status().Update(ctx, toBeUpdate); err != nil {
+			myLogger.Info("Failed to update myDaemonSet status", "err", err)
+			return ctrl.Result{}, fmt.Errorf("failed to update myDaemonSet status")
+		}
+
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -59,4 +109,35 @@ func (r *MyDaemonsetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1beta1.MyDaemonset{}).
 		Complete(r)
+}
+
+func newPod(podName, imageName string, myDaemonSet *appsv1beta1.MyDaemonset) v1.Pod {
+	pod := v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Pod",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      podName,
+			Namespace: myDaemonSet.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "apps.crane.io/v1alpha1",
+					Kind:       "MyDaemonset",
+					Name:       myDaemonSet.Name,
+					UID:        myDaemonSet.UID,
+				},
+			},
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Image: imageName,
+					Name:  podName,
+				},
+			},
+		},
+	}
+
+	return pod
 }
