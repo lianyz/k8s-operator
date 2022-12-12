@@ -65,7 +65,7 @@ func (r *MyDaemonsetReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 	replicas := myDaemonSet.Spec.Replicas
 	if replicas == 0 {
-		replicas = 2
+		replicas = 3
 	}
 	image := myDaemonSet.Spec.Image
 	if image == "" {
